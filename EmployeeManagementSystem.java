@@ -8,8 +8,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class EmployeeManagementSystem {
-    static Map<String, String> users = new HashMap<>(); 
-    static Map<String, String[]> employeeData = new HashMap<>(); 
+    static Map<String, String> users = new HashMap<>(); // User database
+    static Map<String, String[]> employeeData = new HashMap<>(); // Stores employee input
 
     static {
         users.put("admin", "password123");
@@ -63,9 +63,13 @@ class LoginScreen extends JFrame {
             if (EmployeeManagementSystem.users.containsKey(username) &&
                 EmployeeManagementSystem.users.get(username).equals(password)) {
                 dispose();
-                new EmployeeProfile(username);
+                if (username.equals("admin")) {
+                    new EmployeeProfile(username);
+                } else {
+                    new ViewSavedEmployeeDetails();
+                }
             } else {
-                JOptionPane.showMessageDialog(null, "Invalid login! Please check the username or password & try again.", "ERROR!!!", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(null, "Invalid login!", "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -73,19 +77,20 @@ class LoginScreen extends JFrame {
 
 class EmployeeProfile extends JFrame {
     private static final long serialVersionUID = 1L;
-    
-    private JTextField nameField, emailField, addressField, deductionsField, taxField, overtimeField, 
+
+    private JTextField nameField, emailField, addressField, deductionsField, taxField, overtimeField,
                        attendanceField, payDateField, paySlipsField, salaryField;
-    private String username;
+    private boolean isAdmin;
 
     public EmployeeProfile(String username) {
-        this.username = username;
+        this.isAdmin = username.equals("admin");
+
         setTitle("Employee Profile");
         setSize(500, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
-        JPanel panel = new JPanel(new GridLayout(12, 2, 10, 10));
+        JPanel panel = new JPanel(new GridLayout(13, 2, 10, 10));
 
         panel.add(new JLabel("Name:"));
         nameField = new JTextField();
@@ -129,35 +134,58 @@ class EmployeeProfile extends JFrame {
 
         JButton saveButton = new JButton("Save");
         saveButton.addActionListener(e -> saveEmployeeData());
-        panel.add(saveButton);
 
         JButton viewButton = new JButton("View Saved Data");
-        viewButton.addActionListener(e -> viewSavedData());
+        viewButton.addActionListener(e -> viewSavedEmployeeDetails());
+
+        JButton logoutButton = new JButton("Logout");
+        logoutButton.addActionListener(e -> logout());
+
+        if (isAdmin) {
+            panel.add(saveButton);
+        } else {
+        	new ViewSavedEmployeeDetails(); // Employee cannot edit
+        }
+
         panel.add(viewButton);
+        panel.add(logoutButton);
 
         add(panel);
         setVisible(true);
     }
 
     private void saveEmployeeData() {
-        EmployeeManagementSystem.employeeData.put(username, new String[]{
+        if (!isAdmin) return;
+
+        String[] employeeDetails = {
                 nameField.getText(), emailField.getText(), addressField.getText(),
                 deductionsField.getText(), taxField.getText(), overtimeField.getText(),
                 attendanceField.getText(), payDateField.getText(), paySlipsField.getText(),
                 salaryField.getText()
-        });
-        JOptionPane.showMessageDialog(this, "Employee details saved successfully!", "Hooray!!!", JOptionPane.INFORMATION_MESSAGE);
+        };
+        
+        for (String detail : employeeDetails) {
+            if (detail.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "All fields must be filled before saving!", "Warning", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+        }
+        EmployeeManagementSystem.employeeData.put("admin", employeeDetails);
+        JOptionPane.showMessageDialog(this, "Employee details saved successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private void viewSavedData() {
-        String[] details = EmployeeManagementSystem.employeeData.get(username);
+    private void viewSavedEmployeeDetails() {
+    	 setTitle("Saved Employee Details");
+         setSize(500, 500);
+         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+         setLocationRelativeTo(null);
+        String[] details = EmployeeManagementSystem.employeeData.get("admin"); // Show admin's saved data
         if (details == null) {
-            JOptionPane.showMessageDialog(this, "No data found. Please save first!", "ERROR!!!", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "No data found. Please save first!", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
-        
-        StringBuilder message = new StringBuilder();
-        
+
+        StringBuilder message = new StringBuilder("Employee Details:\n");
         message.append("Name: ").append(details[0]).append("\n");
         message.append("Email: ").append(details[1]).append("\n");
         message.append("Address: ").append(details[2]).append("\n");
@@ -167,8 +195,16 @@ class EmployeeProfile extends JFrame {
         message.append("Attendance: ").append(details[6]).append("\n");
         message.append("Pay Date: ").append(details[7]).append("\n");
         message.append("Pay Slips: ").append(details[8]).append("\n");
-        message.append("Salary: ").append(details[9]).append("PHP" + "\n");
+        message.append("Salary: ").append(details[9]).append("\n");
 
         JOptionPane.showMessageDialog(this, message.toString(), "Saved Employee Details", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void logout() {
+        int confirm = JOptionPane.showConfirmDialog(this, "Are you sure you want to logout?", "Confirm Logout", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            dispose();
+            new LoginScreen();
+        }
     }
 }
