@@ -5,6 +5,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.HashMap;
 import java.util.Map;
+import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import javax.swing.JButton;
@@ -58,7 +59,7 @@ class LoginScreen extends JFrame {
         passwordField = new JPasswordField();
         panel.add(passwordField);
 
-        JButton loginButton = new JButton("Login");
+        JButton loginButton = new JButton("Log In");
         loginButton.addActionListener(new LoginActionListener());
         panel.add(loginButton);
 
@@ -145,12 +146,14 @@ class EmployeeProfile extends JFrame {
         panel.add(new JLabel("Salary:"));
         salaryField = new JTextField();
         panel.add(salaryField);
-
+        
+        tableModel. add(employeeTable, new Object[]{nameField, emailField, deductionsField, taxField, overtimeField, attendanceField, payDateField, paySlipsField, salaryField });
+        
         JButton saveButton = new JButton("Save");
         saveButton.addActionListener(e -> saveEmployeeData());
 
         JButton viewButton = new JButton("View Saved Data");
-        viewButton.addActionListener(e -> viewSavedEmployeeDetails());
+        viewButton.addActionListener(e -> new viewSavedEmployeeDetails(username));
         
         JButton payslipButton = new JButton("View Payslip");
         payslipButton.addActionListener(e -> viewPayslip(username)); 
@@ -183,7 +186,7 @@ class EmployeeProfile extends JFrame {
         setVisible(true);
     }
 	
-    private void requestOvertime() { //for employees
+    private void requestOvertime() { //for employees to create 
         JFrame overtimeFrame = new JFrame("Overtime Request");
         overtimeFrame.setSize(300, 200);
         overtimeFrame.setLayout(new GridLayout(3, 2));
@@ -209,25 +212,26 @@ class EmployeeProfile extends JFrame {
         overtimeFrame.setVisible(true);
     }
 
-    private void viewOvertimeRequests() { //for administrator
-        JFrame requestFrame = new JFrame("Overtime Requests");
-        requestFrame.setSize(300, 300);
-        requestFrame.setLayout(new GridLayout(0, 1));
+
+    private void viewOvertimeRequests() { //method for administrator to view them
+        JFrame viewFrame = new JFrame("Overtime Requests");
+        viewFrame.setSize(300, 200);
+        viewFrame.setLayout(new GridLayout(0, 1));
 
         if (EmployeeManagementSystem.overtimeRequests.isEmpty()) {
-            JOptionPane.showMessageDialog(requestFrame, "No overtime requests found.", "List of Overtime Requests", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(viewFrame, "No overtime requests found.", "List of Overtime Requests", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
         for (Map.Entry<String, String> entry : EmployeeManagementSystem.overtimeRequests.entrySet()) {
-            requestFrame.add(new JLabel(entry.getKey() + " requested " + entry.getValue() + " hours"));
+            viewFrame.add(new JLabel(entry.getKey() + " requested " + entry.getValue() + " hours"));
         }
 
-        JButton btnClose = new JButton("Close");
-        btnClose.addActionListener(e -> requestFrame.dispose());
-        requestFrame.add(btnClose);
+        JButton closeButton = new JButton("Close");
+        closeButton.addActionListener(e -> viewFrame.dispose());
+        viewFrame.add(closeButton);
 
-        requestFrame.setVisible(true);
+        viewFrame.setVisible(true);
     }
 
 	private Object viewPayslip(String username) {
@@ -235,6 +239,25 @@ class EmployeeProfile extends JFrame {
 		return null;
 	}
 
+	private void viewPayslip() {
+        JFrame frame = new JFrame("Employee Dashboard");
+        frame.setSize(400, 300);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(new FlowLayout());
+
+        JButton btnViewPayslip = new JButton("View Payslip");
+        frame.add(btnViewPayslip);
+
+        btnViewPayslip.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showPayslip();
+            }
+        });
+
+        frame.setVisible(true);
+        }
+	
 	private void saveEmployeeData() {
         if (!isAdmin) return;
 
@@ -244,7 +267,14 @@ class EmployeeProfile extends JFrame {
                 attendanceField.getText(), payDateField.getText(), paySlipsField.getText(),
                 salaryField.getText()
         };
-        
+        JTextField[] numericFields = {deductionsField, taxField, salaryField, overtimeField, payDateField};
+
+        for (JTextField field : numericFields) {
+            if (!field.getText().matches("[0-9+\\-*/.]+")) { // Allow numbers and basic symbols
+                JOptionPane.showMessageDialog(this, "Only numbers and symbols (+, -, *, /, .) are allowed in Deductions, Tax, Salary, Paydate and Overtime!", "Input Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
         for (String detail : employeeDetails) {
             if (detail.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "All fields must be filled before saving!", "Warning", JOptionPane.WARNING_MESSAGE);
@@ -255,65 +285,90 @@ class EmployeeProfile extends JFrame {
         JOptionPane.showMessageDialog(this, "Employee details saved successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    private void viewSavedEmployeeDetails() {//for administrator only
-    	 setTitle("Saved Employee Details");
-         setSize(500, 500);
-         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-         setLocationRelativeTo(null);
-        String[] details = EmployeeManagementSystem.employeeData.get("admin"); // Show admin's saved data
-        if (details == null) {
-            JOptionPane.showMessageDialog(this, "No data found. Please save first!", "Error", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
+class viewSavedEmployeeDetails extends JFrame {
+    	private static final long serialVersionUID = 1L;
+        private boolean isAdmin;
+        
+        public viewSavedEmployeeDetails(String username) {
+        	this.isAdmin = username.equals("admin");
+        	
+        	setTitle("Saved Employee Details");
+            setSize(500, 500);
+            setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            setLocationRelativeTo(null);
+            
+           String[] details = EmployeeManagementSystem.employeeData.get("admin"); // Show admin's saved data
+           if (details == null) {
+               JOptionPane.showMessageDialog(this, "No data found. Please save first!", "Error", JOptionPane.ERROR_MESSAGE);
+               return;
+           }
+           
+           JPanel mainPanel  = new JPanel(new BorderLayout()); //main panel
+           
 
-        StringBuilder message = new StringBuilder("Employee Details:\n");
-        
-        message.append("Name: ").append(details[0]).append("\n");
-        message.append("Email: ").append(details[1]).append("\n");
-        message.append("Address: ").append(details[2]).append("\n");
-        message.append("Deductions: ").append(details[3]).append("\n");
-        message.append("Tax: ").append(details[4]).append("\n");
-        message.append("Overtime: ").append(details[5]).append("\n");
-        message.append("Attendance: ").append(details[6]).append("\n");
-        message.append("Pay Date: ").append(details[7]).append("\n");
-        message.append("Pay Slips: ").append(details[8]).append("\n");
-        message.append("Salary: ").append(details[9]).append("\n");
-        
-        JButton payslipButton = new JButton("View Payslip");
-        payslipButton.addActionListener(e -> ViewPayslip.showPayslip());
-        JPanel jPanel = new JPanel();
-		jPanel.add(payslipButton);
-		
-		if (!isAdmin) { // Employees can request overtime
-	        JButton overtimeButton = new JButton("Request Overtime");
-	        overtimeButton.addActionListener(e -> requestOvertime());
-	        JPanel jPanel2 = new JPanel();
-			jPanel2.add(overtimeButton);
-	    }
-		
-        JOptionPane.showMessageDialog(this, message.toString(), "Saved Employee Details", JOptionPane.INFORMATION_MESSAGE);
+           JPanel detailsPanel = new JPanel(new GridLayout(10, 2, 10, 10)); //pls let this alignment work
+           
+           detailsPanel.add(new JLabel("Name: " + details[0]));
+           detailsPanel.add(new JLabel("Email: " + details[1]));
+           detailsPanel.add(new JLabel("Address: " + details[2]));
+           detailsPanel.add(new JLabel("Deductions: " + details[3]));
+           detailsPanel.add(new JLabel("Tax: " + details[4]));
+           detailsPanel.add(new JLabel("Overtime: " + details[5]));
+           detailsPanel.add(new JLabel("Attendance: " + details[6]));
+           detailsPanel.add(new JLabel("Pay Date: " + details[7]));
+           detailsPanel.add(new JLabel("Pay Slips: " + details[8]));
+           detailsPanel.add(new JLabel("Salary: PHP " + details[9]));
+           
+           JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10)); //buttons panel for bottom. 
+           //dear god... the buttons were dancing when I ran this without giving them directions
+           
+           JButton payslipButton = new JButton("View Payslip");
+           payslipButton.addActionListener(e -> ViewPayslip.showPayslip());
+           buttonsPanel.add(payslipButton);
+   		
+   		if (!isAdmin) { // Employees can request overtime
+   	        JButton overtimeButton = new JButton("Request Overtime");
+   	        overtimeButton.addActionListener(e -> requestOvertime());
+   	        buttonsPanel.add(overtimeButton);
+   	    }
+   		mainPanel.add(detailsPanel, BorderLayout.CENTER);
+   		mainPanel.add(buttonsPanel, BorderLayout.SOUTH);
+   		
+   		add(mainPanel);
+        setVisible(true);
+       }
+       
+   private void requestOvertime() { //for employees
+           JFrame overtimeFrame = new JFrame("Overtime Request");
+           overtimeFrame.setSize(300, 200);
+           overtimeFrame.setLayout(new GridLayout(3, 2));
+
+           overtimeFrame.add(new JLabel("Overtime Hours:"));
+           JTextField txtOvertimeHours = new JTextField();
+           overtimeFrame.add(txtOvertimeHours);
+
+           JButton btnSubmit = new JButton("Submit Request");
+           overtimeFrame.add(btnSubmit);
+
+           btnSubmit.addActionListener(e -> {
+               String overtimeHours = txtOvertimeHours.getText();
+               if (!overtimeHours.isEmpty()) {
+                   EmployeeManagementSystem.overtimeRequests.put(getName(), overtimeHours);
+                   JOptionPane.showMessageDialog(overtimeFrame, "Overtime request submitted for admin approval.");
+                   overtimeFrame.dispose();
+               } else {
+                   JOptionPane.showMessageDialog(overtimeFrame, "Please enter overtime hours.", "Error", JOptionPane.ERROR_MESSAGE);
+               }
+           });
+
+           overtimeFrame.setVisible(true);
+        }
+    	
     }
     
-    private void ViewPayslip() {
-            JFrame frame = new JFrame("Employee Dashboard");
-            frame.setSize(400, 300);
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setLayout(new FlowLayout());
+    
 
-            JButton btnViewPayslip = new JButton("View Payslip");
-            frame.add(btnViewPayslip);
-
-            btnViewPayslip.addActionListener(new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    showPayslip();
-                }
-            });
-
-            frame.setVisible(true);
-            }
-
-        static void showPayslip() {
+    static void showPayslip() {
         	
             JFrame payslipFrame = new JFrame("Payslip");
             payslipFrame.setSize(300, 200);
